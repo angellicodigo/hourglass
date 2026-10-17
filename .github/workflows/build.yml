@@ -41,16 +41,16 @@ jobs:
 
     # Restore
 
-    - name: Restore ${{env.NAME}}.sln
-      run: dotnet restore ${{env.NAME}}.sln /p:DisableWarnForInvalidRestoreProjects=true /p:BuildWithNetFrameworkHostedCompiler=true
+    - name: Restore ${{env.NAME}}.slnx
+      run: dotnet restore ${{env.NAME}}.slnx /p:DisableWarnForInvalidRestoreProjects=true /p:BuildWithNetFrameworkHostedCompiler=true
 
     # Build
 
     - name: Build ${{env.NAME}} ${{env.CONFIG_PORTABLE}}
-      run: msbuild /p:Configuration="${{env.CONFIG_PORTABLE}}" ${{env.NAME}}.sln
+      run: msbuild /p:Configuration="${{env.CONFIG_PORTABLE}}" ${{env.NAME}}.slnx
 
     - name: Build ${{env.NAME}} ${{env.CONFIG}}
-      run: msbuild /p:Configuration="${{env.CONFIG}}" ${{env.NAME}}.sln
+      run: msbuild /p:Configuration="${{env.CONFIG}}" ${{env.NAME}}.slnx
 
     # Test
 
