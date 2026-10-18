@@ -123,11 +123,14 @@ public sealed class WindowSize
     }
 
     /// <summary>
-    /// Returns a <see cref="WindowSize"/> for a visible window of type <typeparamref name="T"/>, or <c>null</c> if
-    /// there is no visible window of type <typeparamref name="T"/>.
+    /// Returns a <see cref="WindowSize"/> for the latest created visible window of type <typeparamref name="T"/>, or
+    /// <c>null</c> if there is no visible window of type <typeparamref name="T"/>.
     /// </summary>
+    /// <remarks>
+    /// <see cref="Application.Windows"/> lists the windows in the order they were created.
+    /// </remarks>
     /// <typeparam name="T">The type of the window.</typeparam>
-    /// <returns>A <see cref="WindowSize"/> for a visible window of type <typeparamref name="T"/>, or <c>null</c> if there is no visible window of type <typeparamref name="T"/>.</returns>
+    /// <returns>A <see cref="WindowSize"/> for the latest created visible window of type <typeparamref name="T"/>, or <c>null</c> if there is no visible window of type <typeparamref name="T"/>.</returns>
     public static WindowSize? FromWindowOfType<T>()
         where T : Window, IRestorableWindow
     {
@@ -144,12 +147,16 @@ public sealed class WindowSize
     }
 
     /// <summary>
-    /// Returns a <see cref="WindowSize"/> for another visible or last window of the same type, or <c>null</c> if there is
-    /// no other visible or last window of the same type.
+    /// Returns a <see cref="WindowSize"/> for the latest created other visible window of the same type, or for the
+    /// latest created other window of the same type if none of them is visible, or <c>null</c> if there is no other
+    /// window of the same type.
     /// </summary>
+    /// <remarks>
+    /// <see cref="Application.Windows"/> lists the windows in the order they were created.
+    /// </remarks>
     /// <typeparam name="T">The type of the window.</typeparam>
     /// <param name="window">A window.</param>
-    /// <returns>A <see cref="WindowSize"/> for another visible or last window of the same type, or <c>null</c> if there is no other visible or last window of the same type.</returns>
+    /// <returns>A <see cref="WindowSize"/> for the latest created other visible or other window of the same type, or <c>null</c> if there is no other window of the same type.</returns>
     public static WindowSize? FromSiblingOfWindow<T>(T window)
         where T : Window, IRestorableWindow
     {

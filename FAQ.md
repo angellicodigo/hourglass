@@ -235,6 +235,11 @@ You can omit the `at` or `on` separating the date, weekday or tomorrow and the t
 
 `Right Click` on any empty space in the timer window and select **New timer**.
 
+To open each new timer window slightly offset from the latest opened one, so that the timer windows do not overlap completely, `Right Click` on any empty space in the timer window and check **Advanced options** / **Cascade new timer windows**. The command-line option is [`--cascade-windows`](https://github.com/search?type=code&q=repo%3Ai2van%2Fhourglass+path%3AHourglass%2FResources%2FUsage.txt+--cascade-windows), `-cw`, `/cw`.
+
+> [!NOTE]
+> This option has no effect when the timer windows are [always opened centered](#how-to-always-open-the-hourglass-timer-windows-centered).
+
 ## How do I keep the timer window on top of other windows?
 
 `Right Click` on any empty space in the timer window and check **Always on top**.
@@ -571,6 +576,9 @@ The **Hourglass** settings file location can be opened directly from the timer w
 >   <value>True</value>
 > </setting>
 > ```
+
+> [!NOTE]
+> When `AlwaysCenterWindow` is `True`, the **Advanced options** / **Cascade new timer windows** option and the [`--cascade-windows`](https://github.com/search?type=code&q=repo%3Ai2van%2Fhourglass+path%3AHourglass%2FResources%2FUsage.txt+--cascade-windows), `-cw`, `/cw` command-line option have no effect, since the timer windows are always centered.
 
 ## How to allow the Hourglass timer windows to be placed off-screen?
 

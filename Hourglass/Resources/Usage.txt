@@ -107,6 +107,21 @@ Options:
         Default value   last
         Alias           -an, /an
 
+  --cascade-windows on|off|last
+        Opens each new timer window slightly offset from the latest opened
+        one, so that the windows do not overlap completely. When a new timer
+        window does not fit on the screen, its position wraps to the top of
+        the screen. Applies to the windows opened with the --multi-timers
+        option as well.
+
+        If the AlwaysCenterWindow setting is set to True in the settings file
+        (see FAQ), the new timer windows are always centered and this option
+        has no effect.
+
+        Required        no
+        Default value   last
+        Alias           -cw, /cw
+
   --order-by-title on|off|last
         Order the timers by the title first then by the time left.
 
@@ -413,6 +428,7 @@ Options:
             --hide-from-taskbar           -hw off
             --reverse-progress-bar        -g  off
             --activate-next               -an on
+            --cascade-windows             -cw off
             --order-by-title              -ot off
             --digital-clock-time          -c  off
             --show-time-elapsed           -u  off

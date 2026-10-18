@@ -247,6 +247,17 @@ public sealed class CommandLineArguments
     public bool ActivateNextWindow { get; private set; }
 
     /// <summary>
+    /// Gets a value indicating whether to open new timer windows slightly offset from the previous one.
+    /// </summary>
+    public bool CascadeWindows { get; private set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether <see cref="WindowBounds"/> location is taken from a sibling window,
+    /// in which case it is offset by <see cref="GetWindowSize"/> if <see cref="CascadeWindows"/> is <c>true</c>.
+    /// </summary>
+    private bool IsSiblingWindowLocation { get; set; }
+
+    /// <summary>
     /// Gets a value indicating whether to execute pause all command.
     /// </summary>
     public bool PauseAll { get; private set; }
@@ -428,14 +439,20 @@ public sealed class CommandLineArguments
     /// <summary>
     /// Returns the <see cref="WindowSize"/> specified in the parsed command-line arguments.
     /// </summary>
+    /// <remarks>
+    /// The <see cref="WindowSize"/> is offset slightly from the sibling window it is taken from, if any, when <see
+    /// cref="Settings.CascadeWindows"/> is <c>true</c>.
+    /// </remarks>
     /// <returns>The <see cref="WindowSize"/> specified in the parsed command-line arguments.</returns>
     public WindowSize GetWindowSize()
     {
-        return new(
+        WindowSize windowSize = new(
             WindowBounds,
             WindowState,
             RestoreWindowState,
             IsFullScreen);
+
+        return IsSiblingWindowLocation ? windowSize.Offset() : windowSize;
     }
 
     /// <summary>
@@ -445,7 +462,7 @@ public sealed class CommandLineArguments
     private static CommandLineArguments GetArgumentsFromMostRecentOptions()
     {
         TimerOptions options = TimerOptionsManager.Instance.MostRecentOptions;
-        WindowSize windowSize = GetMostRecentWindowSize();
+        WindowSize windowSize = GetMostRecentWindowSize(out bool isSiblingWindowSize);
 
         return new()
         {
@@ -475,12 +492,14 @@ public sealed class CommandLineArguments
             SaveTimerOnClosing = Settings.Default.SaveTimerOnClosing,
             Prefer24HourTime = Settings.Default.Prefer24HourTime,
             ActivateNextWindow = Settings.Default.ActivateNextWindow,
+            CascadeWindows = Settings.Default.CascadeWindows,
             OrderByTitleFirst = Settings.Default.OrderByTitleFirst,
             WindowTitleMode = options.WindowTitleMode,
             HideWindowTitleBar = options.HideWindowTitleBar,
             WindowState = windowSize.WindowState != WindowState.Minimized ? windowSize.WindowState : windowSize.RestoreWindowState,
             RestoreWindowState = windowSize.RestoreWindowState,
             WindowBounds = windowSize.RestoreBounds,
+            IsSiblingWindowLocation = isSiblingWindowSize,
             LockInterface = options.LockInterface
         };
     }
@@ -493,7 +512,7 @@ public sealed class CommandLineArguments
     {
         TimerOptions defaultOptions = new();
 
-        WindowSize mostRecentWindowSize = GetMostRecentWindowSize();
+        WindowSize mostRecentWindowSize = GetMostRecentWindowSize(out bool isSiblingWindowSize);
         Rect defaultWindowBounds = defaultOptions.WindowSize?.RestoreBounds ?? new(new(InterfaceScaler.BaseWindowWidth, InterfaceScaler.BaseWindowHeight));
         Rect defaultWindowBoundsWithLocation = mostRecentWindowSize.RestoreBounds.Merge(defaultWindowBounds);
 
@@ -525,12 +544,14 @@ public sealed class CommandLineArguments
             SaveTimerOnClosing = true,
             Prefer24HourTime = false,
             ActivateNextWindow = true,
+            CascadeWindows = false,
             OrderByTitleFirst = false,
             WindowTitleMode = WindowTitleMode.ApplicationName,
             HideWindowTitleBar = defaultOptions.HideWindowTitleBar,
             WindowState = defaultOptions.WindowSize?.WindowState ?? WindowState.Normal,
             RestoreWindowState = defaultOptions.WindowSize?.RestoreWindowState ?? WindowState.Normal,
             WindowBounds = defaultWindowBoundsWithLocation,
+            IsSiblingWindowLocation = isSiblingWindowSize,
             LockInterface = defaultOptions.LockInterface
         };
     }
@@ -538,11 +559,14 @@ public sealed class CommandLineArguments
     /// <summary>
     /// Returns the most recent <see cref="WindowSize"/>.
     /// </summary>
+    /// <param name="isSiblingWindowSize">A value indicating whether the most recent <see cref="WindowSize"/> is
+    /// taken from a sibling window rather than from the settings.</param>
     /// <returns>The most recent <see cref="WindowSize"/>.</returns>
-    private static WindowSize GetMostRecentWindowSize()
+    private static WindowSize GetMostRecentWindowSize(out bool isSiblingWindowSize)
     {
         WindowSize? windowSizeFromSettings = Settings.Default.WindowSize;
-        WindowSize? windowSizeFromSibling = WindowSize.FromWindowOfType<TimerWindow>().Offset();
+        WindowSize? windowSizeFromSibling = WindowSize.FromWindowOfType<TimerWindow>();
+        isSiblingWindowSize = windowSizeFromSibling is not null;
         return windowSizeFromSibling ?? windowSizeFromSettings ?? new WindowSize();
     }
 
@@ -961,6 +985,20 @@ public sealed class CommandLineArguments
                     argumentsBasedOnFactoryDefaults.ActivateNextWindow = activateNextWindow;
                     break;
 
+                case "--cascade-windows":
+                case "-cw":
+                case "/cw":
+                    ThrowIfDuplicateSwitch(specifiedSwitches, "--cascade-windows");
+
+                    bool cascadeWindows = GetBoolValue(
+                        arg,
+                        remainingArgs,
+                        argumentsBasedOnMostRecentOptions.CascadeWindows);
+
+                    argumentsBasedOnMostRecentOptions.CascadeWindows = cascadeWindows;
+                    argumentsBasedOnFactoryDefaults.CascadeWindows = cascadeWindows;
+                    break;
+
                 case "--order-by-title":
                 case "-ot":
                 case "/ot":
@@ -1027,8 +1065,16 @@ public sealed class CommandLineArguments
                         remainingArgs,
                         argumentsBasedOnMostRecentOptions.WindowBounds);
 
-                    argumentsBasedOnMostRecentOptions.WindowBounds = argumentsBasedOnMostRecentOptions.WindowBounds.Merge(windowBounds);
+                    Rect mostRecentWindowBounds = argumentsBasedOnMostRecentOptions.WindowBounds.Merge(windowBounds);
+
+                    // An explicitly specified location is not offset from the sibling window location.
+                    bool isSiblingWindowLocation = mostRecentWindowBounds.Location == argumentsBasedOnMostRecentOptions.WindowBounds.Location;
+
+                    argumentsBasedOnMostRecentOptions.WindowBounds = mostRecentWindowBounds;
                     argumentsBasedOnFactoryDefaults.WindowBounds = argumentsBasedOnFactoryDefaults.WindowBounds.Merge(windowBounds);
+
+                    argumentsBasedOnMostRecentOptions.IsSiblingWindowLocation &= isSiblingWindowLocation;
+                    argumentsBasedOnFactoryDefaults.IsSiblingWindowLocation &= isSiblingWindowLocation;
                     break;
 
                 case "--multi-timers":

@@ -1406,6 +1406,10 @@ $</value>
     <value>_Activate next window when minimized or closed</value>
     <comment>The text for the activate next window when minimized or closed menu item, where the character following the optional underscore (_) is the access key</comment>
   </data>
+  <data name="ContextMenuCascadeWindowsMenuItem" xml:space="preserve">
+    <value>Cascade _new timer windows</value>
+    <comment>The text for the cascade new timer windows menu item, where the character following the optional underscore (_) is the access key</comment>
+  </data>
   <data name="ContextMenuOrderByTitleFirstMenuItem" xml:space="preserve">
     <value>Order timers by titl_e first then by time left</value>
     <comment>The text for the order timers by title first then by time left menu item, where the character following the optional underscore (_) is the access key</comment>

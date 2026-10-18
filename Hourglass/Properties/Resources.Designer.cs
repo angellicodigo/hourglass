@@ -305,6 +305,15 @@ namespace Hourglass.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Cascade _new timer windows.
+        /// </summary>
+        public static string ContextMenuCascadeWindowsMenuItem {
+            get {
+                return ResourceManager.GetString("ContextMenuCascadeWindowsMenuItem", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to _Clear recent inputs.
         /// </summary>
         public static string ContextMenuClearRecentInputsMenuItem {

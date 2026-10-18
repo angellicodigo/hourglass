@@ -119,19 +119,21 @@ public static class WindowExtensions
     }
 
     /// <summary>
-    /// Offsets a <see cref="WindowSize"/> slightly from its current position.
+    /// Offsets a <see cref="WindowSize"/> slightly from its current position if <see
+    /// cref="Properties.Settings.CascadeWindows"/> is <c>true</c>; otherwise, returns the <see cref="WindowSize"/>
+    /// unchanged.
     /// </summary>
     /// <param name="windowSize">A <see cref="WindowSize"/>.</param>
     /// <returns>The offset <see cref="WindowSize"/>.</returns>
-    public static WindowSize? Offset(this WindowSize? windowSize)
+    public static WindowSize Offset(this WindowSize windowSize)
     {
-        return windowSize is null
-            ? null
-            : new(
+        return Properties.Settings.Default.CascadeWindows
+            ? new(
                 windowSize.RestoreBounds.Offset(),
                 windowSize.WindowState,
                 windowSize.RestoreWindowState,
-                windowSize.IsFullScreen);
+                windowSize.IsFullScreen)
+            : windowSize;
     }
 
     /// <param name="window">A window.</param>
@@ -152,23 +154,28 @@ public static class WindowExtensions
         /// Restores the size, position, and state of a window from another window of the same type.
         /// </summary>
         /// <remarks>
-        /// This method offsets the window position slightly so that the two windows do not overlap.
+        /// If <see cref="Properties.Settings.CascadeWindows"/> is <c>true</c>, this method restores the size,
+        /// position, and state from the latest created visible window of the same type instead, if any, and offsets
+        /// the window position slightly so that the windows do not overlap.
         /// </remarks>
         /// <param name="otherWindow">The window from which to copy the size, position, and state.</param>
         /// <param name="options">Options for performing the restore. (Optional.)</param>
         public void RestoreFromWindow(T otherWindow, RestoreOptions options = RestoreOptions.None)
         {
-            WindowSize? windowSize = WindowSize.FromWindow(otherWindow);
-            WindowSize? offsetWindowSize = windowSize.Offset();
-            window.Restore(offsetWindowSize, options);
+            WindowSize? windowSize = Properties.Settings.Default.CascadeWindows
+                ? WindowSize.FromSiblingOfWindow(window) ?? WindowSize.FromWindow(otherWindow)
+                : WindowSize.FromWindow(otherWindow);
+
+            window.Restore(windowSize?.Offset(), options);
         }
 
         /// <summary>
-        /// Restores the size, position, and state of a window from another visible window of the same type, or from
-        /// the app settings if there is no other visible window of the same type.
+        /// Restores the size, position, and state of a window from the latest created other visible window of the
+        /// same type, or from the app settings if there is no other visible window of the same type.
         /// </summary>
         /// <remarks>
-        /// This method offsets the window position slightly so that the two windows do not overlap.
+        /// This method offsets the window position slightly so that the two windows do not overlap if <see
+        /// cref="Properties.Settings.CascadeWindows"/> is <c>true</c>.
         /// </remarks>
         /// <param name="options">Options for performing the restore. (Optional.)</param>
         public void RestoreFromSibling(RestoreOptions options = RestoreOptions.None)
@@ -176,8 +183,7 @@ public static class WindowExtensions
             WindowSize? windowSize = WindowSize.FromSiblingOfWindow(window);
             if (windowSize is not null)
             {
-                WindowSize? offsetWindowSize = windowSize.Offset();
-                window.Restore(offsetWindowSize, options);
+                window.Restore(windowSize.Offset(), options);
             }
             else
             {
@@ -583,18 +589,32 @@ public static class WindowExtensions
         {
             if (rect.HasLocation())
             {
-                Rect virtualScreenRect = new(
-                    SystemParameters.VirtualScreenLeft,
-                    SystemParameters.VirtualScreenTop,
-                    SystemParameters.VirtualScreenWidth,
-                    SystemParameters.VirtualScreenHeight);
-
-                return virtualScreenRect.Contains(rect.GetCenter());
+                return VirtualScreenRect.Contains(rect.GetCenter());
             }
 
             return true;
         }
+
+        /// <summary>
+        /// Returns the bounds of the screen area the <see cref="Rect"/> is on: the work area of the primary screen if
+        /// the center of the <see cref="Rect"/> is within it; otherwise, the virtual screen.
+        /// </summary>
+        /// <returns>The bounds of the screen area the <see cref="Rect"/> is on.</returns>
+        private Rect GetScreenRect()
+        {
+            Rect workAreaRect = SystemParameters.WorkArea;
+            return workAreaRect.Contains(rect.GetCenter()) ? workAreaRect : VirtualScreenRect;
+        }
     }
+
+    /// <summary>
+    /// Gets the bounds of the virtual screen.
+    /// </summary>
+    private static Rect VirtualScreenRect => new(
+        SystemParameters.VirtualScreenLeft,
+        SystemParameters.VirtualScreenTop,
+        SystemParameters.VirtualScreenWidth,
+        SystemParameters.VirtualScreenHeight);
 
     /// <summary>
     /// Returns a value indicating whether the size and position of the window are such that the center of the
@@ -620,7 +640,9 @@ public static class WindowExtensions
     }
 
     /// <summary>
-    /// Offsets a <see cref="Rect"/> slightly from its current position.
+    /// Offsets a <see cref="Rect"/> from its current position by the system cascade step, so that the title bar of
+    /// the window behind remains visible. When the offset <see cref="Rect"/> does not fit on the screen, its position
+    /// wraps to the top of the next column, and then to the top-left corner of the screen.
     /// </summary>
     /// <param name="rect">A <see cref="Rect"/>.</param>
     /// <returns>The offset <see cref="Rect"/>.</returns>
@@ -631,33 +653,35 @@ public static class WindowExtensions
             return rect;
         }
 
-        const int OffsetAmount = 0;
+        // The window title bar height including the frame, as used by Windows to cascade windows.
+        double offsetAmount = SystemParameters.WindowNonClientFrameThickness.Top;
 
+        Rect screenRect = rect.GetScreenRect();
         Rect offsetRect = rect;
 
         // Move the rect down and to the right
-        offsetRect.X += OffsetAmount;
-        offsetRect.Y += OffsetAmount;
+        offsetRect.X += offsetAmount;
+        offsetRect.Y += offsetAmount;
 
-        if (offsetRect.IsOnScreen())
+        if (screenRect.Contains(offsetRect))
         {
             return offsetRect;
         }
 
-        // Move the rect to the top and to the right
-        offsetRect.X += OffsetAmount - Math.Floor((offsetRect.Y - SystemParameters.VirtualScreenTop) / OffsetAmount) * OffsetAmount;
-        offsetRect.Y = SystemParameters.VirtualScreenTop;
+        // Wrap the rect to the top of the next column
+        offsetRect.X += offsetAmount - Math.Floor((offsetRect.Y - screenRect.Top) / offsetAmount) * offsetAmount;
+        offsetRect.Y = screenRect.Top;
 
-        if (offsetRect.IsOnScreen())
+        if (screenRect.Contains(offsetRect))
         {
             return offsetRect;
         }
 
-        // Move the rect to the far top-left
-        offsetRect.X = SystemParameters.VirtualScreenLeft;
-        offsetRect.Y = SystemParameters.VirtualScreenTop;
+        // Wrap the rect to the top-left corner of the screen
+        offsetRect.X = screenRect.Left;
+        offsetRect.Y = screenRect.Top;
 
-        if (offsetRect.IsOnScreen())
+        if (screenRect.Contains(offsetRect))
         {
             return offsetRect;
         }

@@ -189,9 +189,12 @@ public sealed class AppEntry : WindowsFormsApplicationBase
                 timerStarts = timerStarts.DefaultIfEmpty(null);
             }
 
+            WindowSize windowSize = arguments.GetWindowSize();
+
             foreach (TimerStart? timerStart in timerStarts)
             {
-                ShowNewTimerWindow(arguments, timerStart);
+                ShowNewTimerWindow(arguments, timerStart, windowSize);
+                windowSize = windowSize.Offset();
             }
         }
     }
@@ -202,11 +205,12 @@ public sealed class AppEntry : WindowsFormsApplicationBase
     /// </summary>
     /// <param name="arguments">Parsed command-line arguments.</param>
     /// <param name="timerStart">Timer start.</param>
-    private static void ShowNewTimerWindow(CommandLineArguments arguments, TimerStart? timerStart)
+    /// <param name="windowSize">The size, position, and state of the window.</param>
+    private static void ShowNewTimerWindow(CommandLineArguments arguments, TimerStart? timerStart, WindowSize windowSize)
     {
         TimerWindow window = new(timerStart);
         window.Options.Set(arguments.GetTimerOptions());
-        window.Restore(arguments.GetWindowSize(), RestoreOptions.AllowMinimized);
+        window.Restore(windowSize, RestoreOptions.AllowMinimized);
         window.Show();
 
         if (timerStart is null || window.WindowState != WindowState.Minimized)
@@ -243,6 +247,7 @@ public sealed class AppEntry : WindowsFormsApplicationBase
         Settings.Default.SaveTimerOnClosing = arguments.SaveTimerOnClosing;
         Settings.Default.Prefer24HourTime = arguments.Prefer24HourTime;
         Settings.Default.ActivateNextWindow = arguments.ActivateNextWindow;
+        Settings.Default.CascadeWindows = arguments.CascadeWindows;
         Settings.Default.OrderByTitleFirst = arguments.OrderByTitleFirst;
         Settings.Default.DigitalClockTime = arguments.DigitalClockTime;
     }

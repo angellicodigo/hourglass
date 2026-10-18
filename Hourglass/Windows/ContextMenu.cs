@@ -202,6 +202,11 @@ public sealed class ContextMenu : System.Windows.Controls.ContextMenu
     private MenuItem _activateNextWindowMenuItem = null!;
 
     /// <summary>
+    /// The "Cascade new timer windows" <see cref="MenuItem"/>.
+    /// </summary>
+    private MenuItem _cascadeWindowsMenuItem = null!;
+
+    /// <summary>
     /// The "Order by the title first" <see cref="MenuItem"/>.
     /// </summary>
     private MenuItem _orderByTitleFirstMenuItem = null!;
@@ -457,6 +462,7 @@ public sealed class ContextMenu : System.Windows.Controls.ContextMenu
 
         // Activate next window when minimized or closed
         _activateNextWindowMenuItem.IsChecked = Settings.Default.ActivateNextWindow;
+        _cascadeWindowsMenuItem.IsChecked = Settings.Default.CascadeWindows;
 
         // Order by the title first.
         _orderByTitleFirstMenuItem.IsChecked = Settings.Default.OrderByTitleFirst;
@@ -583,6 +589,7 @@ public sealed class ContextMenu : System.Windows.Controls.ContextMenu
 
         // Activate next window when minimized or closed
         Settings.Default.ActivateNextWindow = _activateNextWindowMenuItem.IsChecked;
+        Settings.Default.CascadeWindows = _cascadeWindowsMenuItem.IsChecked;
 
         // Order by the title first.
         Settings.Default.OrderByTitleFirst = _orderByTitleFirstMenuItem.IsChecked;
@@ -963,6 +970,13 @@ public sealed class ContextMenu : System.Windows.Controls.ContextMenu
         };
         _activateNextWindowMenuItem.Click += CheckableMenuItemClick;
         advancedOptionsMenuItem.Items.Add(_activateNextWindowMenuItem);
+
+        _cascadeWindowsMenuItem = new CheckableMenuItem
+        {
+            Header = Properties.Resources.ContextMenuCascadeWindowsMenuItem
+        };
+        _cascadeWindowsMenuItem.Click += CheckableMenuItemClick;
+        advancedOptionsMenuItem.Items.Add(_cascadeWindowsMenuItem);
 
         // Reset expired timer when clicked
         _resetExpiredTimerMenuItem = new CheckableMenuItem
