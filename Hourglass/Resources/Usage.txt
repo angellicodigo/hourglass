@@ -250,11 +250,21 @@ Options:
         Default value   last
         Alias           -s, /s
 
-        <sound> is the name of a sound file without extension. The sound file
-        should be placed to the application directory or to the
-        "%LOCALAPPDATA%\Hourglass" or "%APPDATA%\Hourglass" directory or to
-        the "Sounds" subdirectory, while no Hourgrass is being run. It can be
-        the symbolic link created by the "mklink" system command.
+        <sound> is the name of one of the built-in sounds, or the name of a
+        sound file without extension. The sound name is case-insensitive and
+        must be surrounded by double quotes if it contains spaces, e.g.,
+        --sound "Loud beep".
+
+        The built-in sounds are (copy with double quotes included):
+
+            "Loud beep"
+            "Normal beep"
+            "Quiet beep"
+
+        The sound file should be placed to the application directory or to
+        the "%LOCALAPPDATA%\Hourglass" or "%APPDATA%\Hourglass" directory or
+        to the "Sounds" subdirectory, while no Hourglass is being run. It can
+        be the symbolic link created by the "mklink" system command.
 
         The sound file supported extensions are:
 

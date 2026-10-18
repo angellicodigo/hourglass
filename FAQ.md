@@ -392,6 +392,14 @@ The built-in color themes cannot be deleted.
 
 `Right Click` on any empty space in the timer window and select a sound from the **Sound** submenu.
 
+The command-line option is [`--sound`](https://github.com/search?type=code&q=repo%3Ai2van%2Fhourglass+path%3AHourglass%2FResources%2FUsage.txt+--sound), `-s`, `/s`. The sound name is case-insensitive and must be surrounded by double quotes if it contains spaces, e.g. `Hourglass.exe --sound "Loud beep" "5 minutes"`. Use `none` to disable the sound.
+
+The built-in sounds are (copy with double quotes included):
+
+- `"Loud beep"`
+- `"Normal beep"`
+- `"Quiet beep"`
+
 ## How do I add a custom notification sound?
 
 Save the sound file to the folder where you installed the **Hourglass** (typically `%PROGRAMFILES(x86)%\Hourglass`) or to the `%LOCALAPPDATA%\Hourglass` or `%APPDATA%\Hourglass` directory or to the `Sounds` subdirectory.
