@@ -1,4 +1,4 @@
-﻿// --------------------------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="TimerWindow.xaml.cs" company="Chris Dziemborowicz">
 //   Copyright (c) Chris Dziemborowicz. All rights reserved.
 // </copyright>
@@ -219,6 +219,16 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
     /// </summary>
     private Storyboard _validationErrorStoryboard = null!;
 
+    /// <summary>
+    /// The window width prior to entering visual timer mode.
+    /// </summary>
+    private double _previousWidth = InterfaceScaler.BaseWindowWidth;
+
+    /// <summary>
+    /// The window height prior to entering visual timer mode.
+    /// </summary>
+    private double _previousHeight = InterfaceScaler.BaseWindowHeight;
+
     public IEnumerable<TimerCommand> Commands { get; private set; } = [];
 
     public sealed record JumpListButton(Button Button, string Text, int Index);
@@ -249,6 +259,8 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
         _scaler.Bind(this);
 
         TimerManager.Instance.Add(Timer);
+
+        VisualTimerDial.DurationCommitted += VisualTimerDialDurationCommitted;
 
         UpdateShowInTaskbar();
         PropertyChangedEventManager.AddHandler(Settings.Default, SettingsPropertyChanged, string.Empty);
@@ -716,8 +728,15 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
             AdjustTimerTextBoxText();
         }
 
-        selection.TextBox.Focus();
-        selection.TextBox.Select(selection.Start, selection.Length);
+        if (Options.VisualTimer)
+        {
+            VisualTimerDial.Focus();
+        }
+        else
+        {
+            selection.TextBox.Focus();
+            selection.TextBox.Select(selection.Start, selection.Length);
+        }
 
         EndAnimationsAndSounds();
         UpdateBoundControls();
@@ -1188,6 +1207,30 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
     /// </summary>
     private void UpdateBoundControls()
     {
+        if (Options.VisualTimer)
+        {
+            VisualTimerDial.Visibility = Visibility.Visible;
+            ProgressBar.Visibility = Visibility.Collapsed;
+            TimerTextBox.Visibility = Visibility.Collapsed;
+            TitleTextBox.Visibility = Visibility.Collapsed;
+            TimeExpiredLabel.Visibility = Visibility.Collapsed;
+            ControlsPanel.VerticalAlignment = VerticalAlignment.Bottom;
+
+            VisualTimerDial.IsLocked = (Timer.State is TimerState.Running or TimerState.Paused) || Options.LockInterface;
+            VisualTimerDial.TimeLeft = Mode == TimerWindowMode.Input ? TimeSpan.Zero : (Timer.TimeLeft ?? TimeSpan.Zero);
+            ButtonPanel.Visibility = Mode == TimerWindowMode.Input ? Visibility.Collapsed : Visibility.Visible;
+        }
+        else
+        {
+            VisualTimerDial.Visibility = Visibility.Collapsed;
+            ProgressBar.Visibility = Visibility.Visible;
+            TimerTextBox.Visibility = Visibility.Visible;
+            TitleTextBox.Visibility = Visibility.Visible;
+            TimeExpiredLabel.Visibility = Visibility.Visible;
+            ControlsPanel.VerticalAlignment = VerticalAlignment.Center;
+            ButtonPanel.Visibility = Visibility.Visible;
+        }
+
         switch (Mode)
         {
             case TimerWindowMode.Input:
@@ -1195,7 +1238,7 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
                 UpdateTaskbarProgress();
 
                 // Enable and disable command buttons as required
-                StartButton.IsEnabled = true;
+                StartButton.IsEnabled = !Options.VisualTimer;
                 PauseButton.IsEnabled = false;
                 ResumeButton.IsEnabled = false;
                 StopButton.IsEnabled = false;
@@ -1307,6 +1350,7 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
     /// </summary>
     private void UpdateBoundTheme()
     {
+        VisualTimerDial.Theme = Theme;
         InnerGrid.Background = Theme?.BackgroundBrush;
         ProgressBar.Foreground = Theme?.ProgressBarBrush;
         ProgressBar.Background = Theme?.ProgressBackgroundBrush;
@@ -1477,6 +1521,12 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
     {
         using IDisposable _ = _updateShellIntegration;
 
+        if (Options.VisualTimer)
+        {
+            VisualTimerDial.TimeLeft = Mode == TimerWindowMode.Input ? TimeSpan.Zero : (Timer.TimeLeft ?? TimeSpan.Zero);
+            VisualTimerDial.IsLocked = (Timer.State is TimerState.Running or TimerState.Paused) || Options.LockInterface;
+        }
+
         UpdateTimeToolTip();
         UpdateNotificationAreaIcon();
     }
@@ -1512,6 +1562,10 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
     private void TimerTick(object sender, EventArgs e)
     {
         UpdateTimeToolTip();
+        if (Options.VisualTimer)
+        {
+            VisualTimerDial.TimeLeft = Timer.TimeLeft ?? TimeSpan.Zero;
+        }
     }
 
     /// <summary>
@@ -1542,6 +1596,44 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
                 _theme = Options.Theme;
                 PropertyChangedEventManager.AddHandler(_theme, ThemePropertyChanged, string.Empty);
                 SetImmersiveDarkMode();
+                break;
+            case nameof(Options.VisualTimer):
+                if (Options.VisualTimer)
+                {
+                    if (WindowState == WindowState.Normal && !IsFullScreen)
+                    {
+                        _previousWidth = (!double.IsNaN(Width) && Width > 0) ? Width : InterfaceScaler.BaseWindowWidth;
+                        _previousHeight = (!double.IsNaN(Height) && Height > 0) ? Height : InterfaceScaler.BaseWindowHeight;
+                    }
+                    else
+                    {
+                        _previousWidth = RestoreBounds.Width > 0 ? RestoreBounds.Width : InterfaceScaler.BaseWindowWidth;
+                        _previousHeight = RestoreBounds.Height > 0 ? RestoreBounds.Height : InterfaceScaler.BaseWindowHeight;
+                    }
+
+                    if (IsFullScreen)
+                    {
+                        IsFullScreen = false;
+                    }
+
+                    if (WindowState != WindowState.Normal)
+                    {
+                        WindowState = WindowState.Normal;
+                    }
+
+                    Width = 280;
+                    Height = 280;
+                }
+                else
+                {
+                    if (WindowState != WindowState.Normal)
+                    {
+                        WindowState = WindowState.Normal;
+                    }
+
+                    Width = (_previousWidth > 0 && !double.IsNaN(_previousWidth)) ? _previousWidth : InterfaceScaler.BaseWindowWidth;
+                    Height = (_previousHeight > 0 && !double.IsNaN(_previousHeight)) ? _previousHeight : InterfaceScaler.BaseWindowHeight;
+                }
                 break;
         }
 
@@ -2024,7 +2116,7 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
     /// <param name="e">The event data.</param>
     private void WindowPreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (Options.LockInterface)
+        if (Options.LockInterface || Options.VisualTimer)
         {
             return;
         }
@@ -2081,6 +2173,26 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
     /// <param name="e">The event data.</param>
     private void WindowLoaded(object sender, RoutedEventArgs e)
     {
+        if (Options.VisualTimer)
+        {
+            if (Math.Abs(Width - 280) > 1 && !double.IsNaN(Width) && Width > 0)
+            {
+                _previousWidth = Width;
+                _previousHeight = Height;
+            }
+            else
+            {
+                _previousWidth = InterfaceScaler.BaseWindowWidth;
+                _previousHeight = InterfaceScaler.BaseWindowHeight;
+            }
+
+            if (WindowState == WindowState.Normal)
+            {
+                Width = 280;
+                Height = 280;
+            }
+        }
+
         // Deal with any input or timer set in the constructor
         if (_timerStartToStartOnLoad is not null)
         {
@@ -2300,6 +2412,8 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
 
     private void WindowClosed(object sender, EventArgs e)
     {
+        VisualTimerDial.DurationCommitted -= VisualTimerDialDurationCommitted;
+
         if (Timer.State == TimerState.Paused)
         {
             UpdateNotificationAreaIcon();
@@ -2308,6 +2422,14 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
         Application.Current.ClearJumpList();
 
         this.BringNextToFrontAndActivate();
+    }
+
+    private void VisualTimerDialDurationCommitted(object? sender, TimeSpan duration)
+    {
+        if (duration.TotalSeconds > 0)
+        {
+            Show(TimerStart.FromTimeSpan(duration));
+        }
     }
 
     private void WindowSourceInitialized(object sender, EventArgs e)

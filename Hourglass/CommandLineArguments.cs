@@ -1,4 +1,4 @@
-﻿// --------------------------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="CommandLineArguments.cs" company="Chris Dziemborowicz">
 //   Copyright (c) Chris Dziemborowicz. All rights reserved.
 // </copyright>
@@ -242,6 +242,11 @@ public sealed class CommandLineArguments
     public bool LockInterface { get; private set; }
 
     /// <summary>
+    /// Gets a value indicating whether visual timer mode is enabled.
+    /// </summary>
+    public bool VisualTimer { get; private set; }
+
+    /// <summary>
     /// Gets a value indicating whether to activate next window when minimized or closed.
     /// </summary>
     public bool ActivateNextWindow { get; private set; }
@@ -432,7 +437,8 @@ public sealed class CommandLineArguments
             HideWindowTitleBar = HideWindowTitleBar,
             WindowTitleMode = WindowTitleMode,
             WindowSize = GetWindowSize(),
-            LockInterface = LockInterface
+            LockInterface = LockInterface,
+            VisualTimer = VisualTimer
         };
     }
 
@@ -500,7 +506,8 @@ public sealed class CommandLineArguments
             RestoreWindowState = windowSize.RestoreWindowState,
             WindowBounds = windowSize.RestoreBounds,
             IsSiblingWindowLocation = isSiblingWindowSize,
-            LockInterface = options.LockInterface
+            LockInterface = options.LockInterface,
+            VisualTimer = options.VisualTimer
         };
     }
 
@@ -552,7 +559,8 @@ public sealed class CommandLineArguments
             RestoreWindowState = defaultOptions.WindowSize?.RestoreWindowState ?? WindowState.Normal,
             WindowBounds = defaultWindowBoundsWithLocation,
             IsSiblingWindowLocation = isSiblingWindowSize,
-            LockInterface = defaultOptions.LockInterface
+            LockInterface = defaultOptions.LockInterface,
+            VisualTimer = defaultOptions.VisualTimer
         };
     }
 
@@ -719,6 +727,21 @@ public sealed class CommandLineArguments
 
                     argumentsBasedOnMostRecentOptions.DigitalClockTime = digitalClockTime;
                     argumentsBasedOnFactoryDefaults.DigitalClockTime = digitalClockTime;
+                    break;
+
+                case "--visual-timer":
+                case "/visual-timer":
+                case "-vt":
+                case "/vt":
+                    ThrowIfDuplicateSwitch(specifiedSwitches, "--visual-timer");
+
+                    bool visualTimer = GetBoolValue(
+                        arg,
+                        remainingArgs,
+                        argumentsBasedOnMostRecentOptions.VisualTimer);
+
+                    argumentsBasedOnMostRecentOptions.VisualTimer = visualTimer;
+                    argumentsBasedOnFactoryDefaults.VisualTimer = visualTimer;
                     break;
 
                 case "--show-time-elapsed":

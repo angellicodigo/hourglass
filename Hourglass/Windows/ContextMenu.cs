@@ -1,4 +1,4 @@
-﻿// --------------------------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="ContextMenu.cs" company="Chris Dziemborowicz">
 //   Copyright (c) Chris Dziemborowicz. All rights reserved.
 // </copyright>
@@ -60,6 +60,11 @@ public sealed class ContextMenu : System.Windows.Controls.ContextMenu
     /// The "Full screen" <see cref="MenuItem"/>.
     /// </summary>
     private MenuItem _fullScreenMenuItem = null!;
+
+    /// <summary>
+    /// The "Visual timer" <see cref="MenuItem"/>.
+    /// </summary>
+    private MenuItem _visualTimerMenuItem = null!;
 
     /// <summary>
     /// The "Prompt on exit" <see cref="MenuItem"/>.
@@ -393,6 +398,9 @@ public sealed class ContextMenu : System.Windows.Controls.ContextMenu
         // Full screen
         _fullScreenMenuItem.IsChecked = _timerWindow.IsFullScreen;
 
+        // Visual timer
+        _visualTimerMenuItem.IsChecked = _timerWindow.Options.VisualTimer;
+
         // Prompt on exit
         _promptOnExitMenuItem.IsChecked = _timerWindow.Options.PromptOnExit;
 
@@ -528,6 +536,10 @@ public sealed class ContextMenu : System.Windows.Controls.ContextMenu
 
         // Full screen
         _timerWindow.IsFullScreen = _fullScreenMenuItem.IsChecked;
+
+        // Visual timer
+        _timerWindow.Options.VisualTimer = _visualTimerMenuItem.IsChecked;
+        Settings.Default.VisualTimer = _visualTimerMenuItem.IsChecked;
 
         // Prompt on exit
         _timerWindow.Options.PromptOnExit = _promptOnExitMenuItem.IsChecked;
@@ -698,6 +710,14 @@ public sealed class ContextMenu : System.Windows.Controls.ContextMenu
         };
         _fullScreenMenuItem.Click += CheckableMenuItemClick;
         Items.Add(_fullScreenMenuItem);
+
+        // Visual timer
+        _visualTimerMenuItem = new CheckableMenuItem
+        {
+            Header = Properties.Resources.ContextMenuVisualTimerMenuItem
+        };
+        _visualTimerMenuItem.Click += CheckableMenuItemClick;
+        Items.Add(_visualTimerMenuItem);
 
         // Window title
         MenuItem windowTitleMenuItem = new()

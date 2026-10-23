@@ -1,4 +1,4 @@
-﻿// --------------------------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="TimerOptions.cs" company="Chris Dziemborowicz">
 //   Copyright (c) Chris Dziemborowicz. All rights reserved.
 // </copyright>
@@ -104,6 +104,7 @@ public sealed class TimerOptions : INotifyPropertyChanged
             WindowState.Normal,
             false /* isFullScreen */);
         LockInterface = false;
+        VisualTimer = false;
     }
 
     /// <summary>
@@ -605,6 +606,25 @@ public sealed class TimerOptions : INotifyPropertyChanged
     }
 
     /// <summary>
+    /// Gets or sets a value indicating whether to display the visual timer dial.
+    /// </summary>
+    public bool VisualTimer
+    {
+        get;
+
+        set
+        {
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+            PropertyChanged.Notify(this);
+        }
+    }
+
+    /// <summary>
     /// Returns a <see cref="TimerOptions"/> for the specified <see cref="TimerOptions"/>, or <c>null</c> if the
     /// specified <see cref="TimerOptions"/> is <c>null</c>.
     /// </summary>
@@ -663,6 +683,7 @@ public sealed class TimerOptions : INotifyPropertyChanged
         WindowTitleMode = options.WindowTitleMode;
         WindowSize = WindowSize.FromWindowSize(options.WindowSize);
         LockInterface = options.LockInterface;
+        VisualTimer = options.VisualTimer;
 
         PropertyChanged.Notify(this,
             nameof(WindowTitleMode),
@@ -687,7 +708,8 @@ public sealed class TimerOptions : INotifyPropertyChanged
             nameof(Theme),
             nameof(Sound),
             nameof(LoopSound),
-            nameof(LockInterface));
+            nameof(LockInterface),
+            nameof(VisualTimer));
     }
 
     /// <summary>
@@ -727,6 +749,7 @@ public sealed class TimerOptions : INotifyPropertyChanged
         WindowTitleMode = info.WindowTitleMode;
         WindowSize = WindowSize.FromWindowSizeInfo(info.WindowSize);
         LockInterface = info.LockInterface;
+        VisualTimer = info.VisualTimer;
 
         PropertyChanged.Notify(this,
             nameof(WindowTitleMode),
@@ -751,7 +774,8 @@ public sealed class TimerOptions : INotifyPropertyChanged
             nameof(Theme),
             nameof(Sound),
             nameof(LoopSound),
-            nameof(LockInterface));
+            nameof(LockInterface),
+            nameof(VisualTimer));
     }
 
     /// <summary>
@@ -785,7 +809,8 @@ public sealed class TimerOptions : INotifyPropertyChanged
             WindowTitleMode = WindowTitleMode,
             HideWindowTitleBar = HideWindowTitleBar,
             WindowSize = WindowSizeInfo.FromWindowSize(WindowSize)!,
-            LockInterface = LockInterface
+            LockInterface = LockInterface,
+            VisualTimer = VisualTimer
         };
     }
 }

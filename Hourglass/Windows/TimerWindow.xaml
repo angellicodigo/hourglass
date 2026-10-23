@@ -1,4 +1,4 @@
-﻿<Window x:Class="Hourglass.Windows.TimerWindow"
+<Window x:Class="Hourglass.Windows.TimerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:Hourglass.Windows"
@@ -289,6 +289,7 @@
         <ProgressBar x:Name="ProgressBar"/>
         <Border x:Name="OuterNotificationBorder" IsHitTestVisible="False" Opacity="0"/>
         <Grid x:Name="InnerGrid" Margin="10">
+            <local:VisualTimerControl x:Name="VisualTimerDial" Visibility="Collapsed" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
             <StackPanel x:Name="ControlsPanel" Margin="20 0" VerticalAlignment="Center">
                 <AdornerDecorator>
                     <local:SizeToFitTextBox x:Name="TitleTextBox"

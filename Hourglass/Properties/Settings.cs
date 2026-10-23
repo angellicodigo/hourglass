@@ -1,4 +1,4 @@
-﻿// --------------------------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="Settings.cs" company="Chris Dziemborowicz">
 //   Copyright (c) Chris Dziemborowicz. All rights reserved.
 // </copyright>
@@ -27,7 +27,21 @@ internal sealed partial class Settings
     /// </summary>
     public TimerOptions MostRecentOptions
     {
-        get => TimerOptions.FromTimerOptionsInfo(MostRecentOptionsInfo) ?? new();
+        get
+        {
+            TimerOptions? options = TimerOptions.FromTimerOptionsInfo(MostRecentOptionsInfo);
+            if (options is not null)
+            {
+                return options;
+            }
+
+            return new()
+            {
+                DigitalClockTime = DigitalClockTime,
+                VisualTimer = VisualTimer
+            };
+        }
+
         set => MostRecentOptionsInfo = TimerOptionsInfo.FromTimerOptions(value);
     }
 

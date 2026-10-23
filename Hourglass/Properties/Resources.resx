@@ -826,6 +826,10 @@ $</value>
     <value>_Full screen</value>
     <comment>The text for the full screen menu item, where the character following the optional underscore (_) is the access key</comment>
   </data>
+  <data name="ContextMenuVisualTimerMenuItem" xml:space="preserve">
+    <value>_Visual timer</value>
+    <comment>The text for the visual timer menu item, where the character following the optional underscore (_) is the access key</comment>
+  </data>
   <data name="ContextMenuLoopSoundMenuItem" xml:space="preserve">
     <value>_Loop sound</value>
     <comment>The text for the loop sound menu item, where the character following the optional underscore (_) is the access key</comment>

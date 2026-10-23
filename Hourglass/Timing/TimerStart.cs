@@ -1,4 +1,4 @@
-﻿// --------------------------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="TimerStart.cs" company="Chris Dziemborowicz">
 //   Copyright (c) Chris Dziemborowicz. All rights reserved.
 // </copyright>
@@ -123,6 +123,22 @@ public sealed class TimerStart
     public static TimerStart? FromTimerStartInfo(TimerStartInfo? timerStartInfo)
     {
         return timerStartInfo is null ? null : new(timerStartInfo);
+    }
+
+    /// <summary>
+    /// Returns a <see cref="TimerStart"/> for a <see cref="TimeSpan"/>.
+    /// </summary>
+    /// <param name="timeSpan">A <see cref="TimeSpan"/>.</param>
+    /// <returns>The <see cref="TimerStart"/> for the <see cref="TimeSpan"/>.</returns>
+    public static TimerStart FromTimeSpan(TimeSpan timeSpan)
+    {
+        return new(new TimeSpanToken
+        {
+            Days = timeSpan.Days,
+            Hours = timeSpan.Hours,
+            Minutes = timeSpan.Minutes,
+            Seconds = timeSpan.Seconds + ((double)timeSpan.Milliseconds / 1000)
+        });
     }
 
     /// <summary>

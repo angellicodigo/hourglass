@@ -1,4 +1,4 @@
-﻿// --------------------------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="TimerOptionsInfo.cs" company="Chris Dziemborowicz">
 //   Copyright (c) Chris Dziemborowicz. All rights reserved.
 // </copyright>
@@ -138,6 +138,11 @@ public sealed class TimerOptionsInfo
     /// any action until the timer expires.
     /// </summary>
     public bool LockInterface { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to display the visual timer dial.
+    /// </summary>
+    public bool VisualTimer { get; set; }
 
     /// <summary>
     /// Returns a <see cref="TimerOptionsInfo"/> for the specified <see cref="TimerOptions"/>.
