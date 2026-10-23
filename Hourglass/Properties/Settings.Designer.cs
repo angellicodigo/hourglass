@@ -353,5 +353,28 @@ namespace Hourglass.Properties {
                 this["VisualTimer"] = value;
             }
         }
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("300")]
+        public double VisualTimerWidth {
+            get {
+                return ((double)(this["VisualTimerWidth"]));
+            }
+            set {
+                this["VisualTimerWidth"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("300")]
+        public double VisualTimerHeight {
+            get {
+                return ((double)(this["VisualTimerHeight"]));
+            }
+            set {
+                this["VisualTimerHeight"] = value;
+            }
+        }
     }
 }

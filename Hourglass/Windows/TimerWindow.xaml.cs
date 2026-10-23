@@ -219,15 +219,14 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
     /// </summary>
     private Storyboard _validationErrorStoryboard = null!;
 
-    /// <summary>
-    /// The window width prior to entering visual timer mode.
-    /// </summary>
-    private double _previousWidth = InterfaceScaler.BaseWindowWidth;
+    private static double s_persistedVisualTimerWidth = Settings.Default.VisualTimerWidth > 0 ? Settings.Default.VisualTimerWidth : 300.0;
+    private static double s_persistedVisualTimerHeight = Settings.Default.VisualTimerHeight > 0 ? Settings.Default.VisualTimerHeight : 300.0;
+    private static bool s_hasPersistedVisualTimerSize = Settings.Default.VisualTimerWidth > 0;
 
-    /// <summary>
-    /// The window height prior to entering visual timer mode.
-    /// </summary>
-    private double _previousHeight = InterfaceScaler.BaseWindowHeight;
+    private double _standardTimerWidth = InterfaceScaler.BaseWindowWidth;
+    private double _standardTimerHeight = InterfaceScaler.BaseWindowHeight;
+    private double _visualTimerWidth = s_persistedVisualTimerWidth;
+    private double _visualTimerHeight = s_persistedVisualTimerHeight;
 
     public IEnumerable<TimerCommand> Commands { get; private set; } = [];
 
@@ -261,6 +260,7 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
         TimerManager.Instance.Add(Timer);
 
         VisualTimerDial.DurationCommitted += VisualTimerDialDurationCommitted;
+        VisualTimerDial.DraggedDurationChanged += VisualTimerDialDraggedDurationChanged;
 
         UpdateShowInTaskbar();
         PropertyChangedEventManager.AddHandler(Settings.Default, SettingsPropertyChanged, string.Empty);
@@ -730,6 +730,11 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
 
         if (Options.VisualTimer)
         {
+            TimerTextBox.Text = "00:00";
+            TimerTextBox.IsReadOnly = true;
+            TimerTextBox.Focusable = false;
+            TimerTextBox.Cursor = Cursors.Arrow;
+            VisualTimerDial.TimeLeft = TimeSpan.Zero;
             VisualTimerDial.Focus();
         }
         else
@@ -1210,24 +1215,27 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
         if (Options.VisualTimer)
         {
             VisualTimerDial.Visibility = Visibility.Visible;
+            VisualDialRow.Height = new GridLength(1, GridUnitType.Star);
+            ControlsPanel.VerticalAlignment = VerticalAlignment.Stretch;
             ProgressBar.Visibility = Visibility.Collapsed;
-            TimerTextBox.Visibility = Visibility.Collapsed;
-            TitleTextBox.Visibility = Visibility.Collapsed;
-            TimeExpiredLabel.Visibility = Visibility.Collapsed;
-            ControlsPanel.VerticalAlignment = VerticalAlignment.Bottom;
 
             VisualTimerDial.IsLocked = (Timer.State is TimerState.Running or TimerState.Paused) || Options.LockInterface;
             VisualTimerDial.TimeLeft = Mode == TimerWindowMode.Input ? TimeSpan.Zero : (Timer.TimeLeft ?? TimeSpan.Zero);
             ButtonPanel.Visibility = Mode == TimerWindowMode.Input ? Visibility.Collapsed : Visibility.Visible;
+
+            TitleTextBox.Visibility = Visibility.Visible;
+            TimerTextBox.Visibility = Visibility.Visible;
+            TimeExpiredLabel.Visibility = Visibility.Visible;
         }
         else
         {
             VisualTimerDial.Visibility = Visibility.Collapsed;
+            VisualDialRow.Height = new GridLength(0);
+            ControlsPanel.VerticalAlignment = VerticalAlignment.Center;
             ProgressBar.Visibility = Visibility.Visible;
             TimerTextBox.Visibility = Visibility.Visible;
             TitleTextBox.Visibility = Visibility.Visible;
             TimeExpiredLabel.Visibility = Visibility.Visible;
-            ControlsPanel.VerticalAlignment = VerticalAlignment.Center;
             ButtonPanel.Visibility = Visibility.Visible;
         }
 
@@ -1247,18 +1255,64 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
                 CancelButton.IsEnabled = Timer.State != TimerState.Stopped && Timer.State != TimerState.Expired;
                 UpdateButton.IsEnabled = IsUpdateButtonEnabled;
 
-                // Restore the border, context menu, and watermark text that appear for the text boxes
-                TitleTextBox.BorderThickness = new(1);
-                TimerTextBox.BorderThickness = new(1);
-                TitleTextBox.IsReadOnly = false;
-                TimerTextBox.IsReadOnly = false;
-                Watermark.SetHint(TitleTextBox, Properties.Resources.TimerWindowTitleTextHint);
-                Watermark.SetHint(TimerTextBox, Properties.Resources.TimerWindowTimerTextHint);
+                if (Options.VisualTimer)
+                {
+                    TitleTextBox.BorderThickness = new(1);
+                    TitleTextBox.IsReadOnly = false;
+                    Watermark.SetHint(TitleTextBox, Properties.Resources.TimerWindowTitleTextHint);
+
+                    TimerTextBox.BorderThickness = new(0);
+                    TimerTextBox.IsReadOnly = true;
+                    TimerTextBox.Focusable = false;
+                    TimerTextBox.Cursor = Cursors.Arrow;
+                    Watermark.SetHint(TimerTextBox, null);
+
+                    if (!VisualTimerDial.IsDragging)
+                    {
+                        TimerTextBox.Text = "00:00";
+                    }
+                }
+                else
+                {
+                    // Restore the border, context menu, and watermark text that appear for the text boxes
+                    TitleTextBox.BorderThickness = new(1);
+                    TimerTextBox.BorderThickness = new(1);
+                    TitleTextBox.IsReadOnly = false;
+                    TimerTextBox.IsReadOnly = false;
+                    TimerTextBox.Focusable = true;
+                    TimerTextBox.Cursor = Cursors.IBeam;
+                    Watermark.SetHint(TitleTextBox, Properties.Resources.TimerWindowTitleTextHint);
+                    Watermark.SetHint(TimerTextBox, Properties.Resources.TimerWindowTimerTextHint);
+                }
 
                 break;
 
             case TimerWindowMode.Status:
-                if (Timer.State == TimerState.Expired && !string.IsNullOrWhiteSpace(Timer.Options.Title) && !TitleTextBox.IsFocused)
+                if (Options.VisualTimer)
+                {
+                    TitleTextBox.TextChanged -= TitleTextBoxTextChanged;
+                    TitleTextBox.Text = Timer.Options.Title ?? string.Empty;
+                    TitleTextBox.TextChanged += TitleTextBoxTextChanged;
+
+                    if (Timer.State == TimerState.Expired)
+                    {
+                        TimerTextBox.Text = "00:00";
+                    }
+                    else
+                    {
+                        TimeSpan timeLeft = Timer.TimeLeft ?? TimeSpan.Zero;
+                        int totalSec = (int)Math.Ceiling(timeLeft.TotalSeconds);
+                        if (totalSec < 0)
+                        {
+                            totalSec = 0;
+                        }
+
+                        int minutes = totalSec / 60;
+                        int seconds = totalSec % 60;
+                        TimerTextBox.Text = $"{minutes:D2}:{seconds:D2}";
+                    }
+                }
+                else if (Timer.State == TimerState.Expired && !string.IsNullOrWhiteSpace(Timer.Options.Title) && !TitleTextBox.IsFocused)
                 {
                     TitleTextBox.TextChanged -= TitleTextBoxTextChanged;
                     TitleTextBox.Text =
@@ -1306,6 +1360,8 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
                     TimerTextBox.BorderThickness = new(0);
                     TitleTextBox.IsReadOnly = true;
                     TimerTextBox.IsReadOnly = true;
+                    TimerTextBox.Focusable = false;
+                    TimerTextBox.Cursor = Cursors.Arrow;
                     Watermark.SetHint(TitleTextBox, null);
                     Watermark.SetHint(TimerTextBox, null);
                 }
@@ -1321,13 +1377,30 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
                     CancelButton.IsEnabled = false;
                     UpdateButton.IsEnabled = IsUpdateButtonEnabled;
 
-                    // Restore the border, context menu, and watermark text that appear for the text boxes
-                    TitleTextBox.BorderThickness = new(1);
-                    TimerTextBox.BorderThickness = new(1);
-                    TitleTextBox.IsReadOnly = false;
-                    TimerTextBox.IsReadOnly = false;
-                    Watermark.SetHint(TitleTextBox, Properties.Resources.TimerWindowTitleTextHint);
-                    Watermark.SetHint(TimerTextBox, Properties.Resources.TimerWindowTimerTextHint);
+                    if (Options.VisualTimer)
+                    {
+                        TitleTextBox.BorderThickness = new(0);
+                        TitleTextBox.IsReadOnly = false;
+                        Watermark.SetHint(TitleTextBox, null);
+
+                        TimerTextBox.BorderThickness = new(0);
+                        TimerTextBox.IsReadOnly = true;
+                        TimerTextBox.Focusable = false;
+                        TimerTextBox.Cursor = Cursors.Arrow;
+                        Watermark.SetHint(TimerTextBox, null);
+                    }
+                    else
+                    {
+                        // Restore the border, context menu, and watermark text that appear for the text boxes
+                        TitleTextBox.BorderThickness = new(1);
+                        TimerTextBox.BorderThickness = new(1);
+                        TitleTextBox.IsReadOnly = false;
+                        TimerTextBox.IsReadOnly = false;
+                        TimerTextBox.Focusable = true;
+                        TimerTextBox.Cursor = Cursors.IBeam;
+                        Watermark.SetHint(TitleTextBox, Properties.Resources.TimerWindowTitleTextHint);
+                        Watermark.SetHint(TimerTextBox, Properties.Resources.TimerWindowTimerTextHint);
+                    }
                 }
 
                 break;
@@ -1351,6 +1424,7 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
     private void UpdateBoundTheme()
     {
         VisualTimerDial.Theme = Theme;
+        Background = Theme?.ProgressBackgroundBrush ?? Theme?.BackgroundBrush;
         InnerGrid.Background = Theme?.BackgroundBrush;
         ProgressBar.Foreground = Theme?.ProgressBarBrush;
         ProgressBar.Background = Theme?.ProgressBackgroundBrush;
@@ -1600,15 +1674,15 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
             case nameof(Options.VisualTimer):
                 if (Options.VisualTimer)
                 {
-                    if (WindowState == WindowState.Normal && !IsFullScreen)
+                    if (WindowState == WindowState.Normal && !IsFullScreen && !double.IsNaN(Width) && !double.IsNaN(Height) && Width > 0 && Height > 0)
                     {
-                        _previousWidth = (!double.IsNaN(Width) && Width > 0) ? Width : InterfaceScaler.BaseWindowWidth;
-                        _previousHeight = (!double.IsNaN(Height) && Height > 0) ? Height : InterfaceScaler.BaseWindowHeight;
+                        _standardTimerWidth = Width;
+                        _standardTimerHeight = Height;
                     }
-                    else
+                    else if (RestoreBounds.Width > 0 && RestoreBounds.Height > 0)
                     {
-                        _previousWidth = RestoreBounds.Width > 0 ? RestoreBounds.Width : InterfaceScaler.BaseWindowWidth;
-                        _previousHeight = RestoreBounds.Height > 0 ? RestoreBounds.Height : InterfaceScaler.BaseWindowHeight;
+                        _standardTimerWidth = RestoreBounds.Width;
+                        _standardTimerHeight = RestoreBounds.Height;
                     }
 
                     if (IsFullScreen)
@@ -1621,18 +1695,29 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
                         WindowState = WindowState.Normal;
                     }
 
-                    Width = 280;
-                    Height = 280;
+                    Width = _visualTimerWidth;
+                    Height = _visualTimerHeight;
                 }
                 else
                 {
+                    if (WindowState == WindowState.Normal && !IsFullScreen && !double.IsNaN(Width) && !double.IsNaN(Height) && Width > 0 && Height > 0)
+                    {
+                        _visualTimerWidth = Width;
+                        _visualTimerHeight = Height;
+                        s_persistedVisualTimerWidth = Width;
+                        s_persistedVisualTimerHeight = Height;
+                        s_hasPersistedVisualTimerSize = true;
+                        Settings.Default.VisualTimerWidth = Width;
+                        Settings.Default.VisualTimerHeight = Height;
+                    }
+
                     if (WindowState != WindowState.Normal)
                     {
                         WindowState = WindowState.Normal;
                     }
 
-                    Width = (_previousWidth > 0 && !double.IsNaN(_previousWidth)) ? _previousWidth : InterfaceScaler.BaseWindowWidth;
-                    Height = (_previousHeight > 0 && !double.IsNaN(_previousHeight)) ? _previousHeight : InterfaceScaler.BaseWindowHeight;
+                    Width = (_standardTimerWidth > 0 && !double.IsNaN(_standardTimerWidth)) ? _standardTimerWidth : InterfaceScaler.BaseWindowWidth;
+                    Height = (_standardTimerHeight > 0 && !double.IsNaN(_standardTimerHeight)) ? _standardTimerHeight : InterfaceScaler.BaseWindowHeight;
                 }
                 break;
         }
@@ -1989,18 +2074,26 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
     /// <param name="e">The event data.</param>
     private void TitleTextBoxKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Enter && Mode == TimerWindowMode.Status)
+        if (e.Key == Key.Enter)
         {
-            if (Timer.State == TimerState.Expired)
+            if (Mode == TimerWindowMode.Status)
             {
-                SwitchToInputMode();
+                if (Timer.State == TimerState.Expired)
+                {
+                    SwitchToInputMode();
+                }
+                else
+                {
+                    TitleTextBox.Unfocus();
+                }
+
+                e.Handled = true;
             }
-            else
+            else if (Options.VisualTimer)
             {
                 TitleTextBox.Unfocus();
+                e.Handled = true;
             }
-
-            e.Handled = true;
         }
     }
 
@@ -2070,6 +2163,11 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
     /// <param name="e">The event data.</param>
     private void TimerTextBoxPreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
+        if (Options.VisualTimer)
+        {
+            e.Handled = true;
+            return;
+        }
         if (Options.LockInterface && Mode != TimerWindowMode.Input)
         {
             e.Handled = true;
@@ -2094,6 +2192,11 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
     /// <param name="e">The event data.</param>
     private void TimerTextBoxPreviewGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
+        if (Options.VisualTimer)
+        {
+            e.Handled = true;
+            return;
+        }
         if (Options.LockInterface && Mode != TimerWindowMode.Input)
         {
             e.Handled = true;
@@ -2175,21 +2278,25 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
     {
         if (Options.VisualTimer)
         {
-            if (Math.Abs(Width - 280) > 1 && !double.IsNaN(Width) && Width > 0)
+            if (!s_hasPersistedVisualTimerSize && (double.IsNaN(Width) || Math.Abs(Width - InterfaceScaler.BaseWindowWidth) < 1))
             {
-                _previousWidth = Width;
-                _previousHeight = Height;
+                _standardTimerWidth = InterfaceScaler.BaseWindowWidth;
+                _standardTimerHeight = InterfaceScaler.BaseWindowHeight;
+                if (WindowState == WindowState.Normal)
+                {
+                    Width = 300;
+                    Height = 300;
+                    _visualTimerWidth = 300;
+                    _visualTimerHeight = 300;
+                }
             }
             else
             {
-                _previousWidth = InterfaceScaler.BaseWindowWidth;
-                _previousHeight = InterfaceScaler.BaseWindowHeight;
-            }
-
-            if (WindowState == WindowState.Normal)
-            {
-                Width = 280;
-                Height = 280;
+                if (WindowState == WindowState.Normal)
+                {
+                    Width = _visualTimerWidth;
+                    Height = _visualTimerHeight;
+                }
             }
         }
 
@@ -2331,6 +2438,25 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
         ProgressBar.Orientation = Height > Width
             ? Orientation.Vertical
             : Orientation.Horizontal;
+
+        if (WindowState == WindowState.Normal && !IsFullScreen && !double.IsNaN(Width) && !double.IsNaN(Height) && Width > 0 && Height > 0)
+        {
+            if (Options.VisualTimer)
+            {
+                _visualTimerWidth = Width;
+                _visualTimerHeight = Height;
+                s_persistedVisualTimerWidth = Width;
+                s_persistedVisualTimerHeight = Height;
+                s_hasPersistedVisualTimerSize = true;
+                Settings.Default.VisualTimerWidth = Width;
+                Settings.Default.VisualTimerHeight = Height;
+            }
+            else
+            {
+                _standardTimerWidth = Width;
+                _standardTimerHeight = Height;
+            }
+        }
     }
 
     /// <summary>
@@ -2363,7 +2489,18 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
             _soundPlayer.Value.PlaybackCompleted -= SoundPlayerPlaybackCompleted;
             _soundPlayer.Value.Dispose();
 
-            Settings.Default.WindowSize = WindowSize.FromWindow(this /* window */);
+            if (!Options.VisualTimer)
+            {
+                Settings.Default.WindowSize = WindowSize.FromWindow(this /* window */);
+            }
+            else
+            {
+                Settings.Default.VisualTimerWidth = _visualTimerWidth;
+                Settings.Default.VisualTimerHeight = _visualTimerHeight;
+
+                Rect standardBounds = new(Left, Top, _standardTimerWidth, _standardTimerHeight);
+                Settings.Default.WindowSize = new WindowSize(standardBounds, WindowState, WindowState, IsFullScreen);
+            }
 
             PropertyChangedEventManager.RemoveHandler(_theme, ThemePropertyChanged, string.Empty);
             PropertyChangedEventManager.RemoveHandler(UpdateManager.Instance, UpdateManagerPropertyChanged, string.Empty);
@@ -2413,6 +2550,7 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
     private void WindowClosed(object sender, EventArgs e)
     {
         VisualTimerDial.DurationCommitted -= VisualTimerDialDurationCommitted;
+        VisualTimerDial.DraggedDurationChanged -= VisualTimerDialDraggedDurationChanged;
 
         if (Timer.State == TimerState.Paused)
         {
@@ -2429,6 +2567,22 @@ public sealed partial class TimerWindow : INotifyPropertyChanged, IRestorableWin
         if (duration.TotalSeconds > 0)
         {
             Show(TimerStart.FromTimeSpan(duration));
+        }
+    }
+
+    private void VisualTimerDialDraggedDurationChanged(object? sender, TimeSpan duration)
+    {
+        if (Options.VisualTimer && Mode == TimerWindowMode.Input)
+        {
+            int totalSec = (int)Math.Round(duration.TotalSeconds);
+            if (totalSec < 0)
+            {
+                totalSec = 0;
+            }
+
+            int minutes = totalSec / 60;
+            int seconds = totalSec % 60;
+            TimerTextBox.Text = $"{minutes:D2}:{seconds:D2}";
         }
     }
 

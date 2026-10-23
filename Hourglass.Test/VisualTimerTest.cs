@@ -271,5 +271,23 @@ public sealed class VisualTimerTest
         thread.Start();
         thread.Join();
     }
+
+    [TestMethod]
+    public void VisualTimerControlDraggedDurationChangedEvent()
+    {
+        System.Threading.Thread thread = new(() =>
+        {
+            Hourglass.Windows.VisualTimerControl control = new();
+            TimeSpan received = TimeSpan.MinValue;
+            control.DraggedDurationChanged += (s, ts) => received = ts;
+
+            // Initially not triggered
+            Assert.AreEqual(TimeSpan.MinValue, received);
+        });
+        thread.SetApartmentState(System.Threading.ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+    }
+
 }
 

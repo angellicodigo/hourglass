@@ -289,9 +289,14 @@
         <ProgressBar x:Name="ProgressBar"/>
         <Border x:Name="OuterNotificationBorder" IsHitTestVisible="False" Opacity="0"/>
         <Grid x:Name="InnerGrid" Margin="10">
-            <local:VisualTimerControl x:Name="VisualTimerDial" Visibility="Collapsed" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
-            <StackPanel x:Name="ControlsPanel" Margin="20 0" VerticalAlignment="Center">
-                <AdornerDecorator>
+            <Grid x:Name="ControlsPanel" Margin="20 0" VerticalAlignment="Center">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition x:Name="VisualDialRow" Height="0"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <AdornerDecorator Grid.Row="0">
                     <local:SizeToFitTextBox x:Name="TitleTextBox"
                                         UndoLimit="100"
                                         Background="{x:Null}"
@@ -308,6 +313,7 @@
                                         TextChanged="TitleTextBoxTextChanged"/>
                 </AdornerDecorator>
                 <local:SizeToFitTextBox x:Name="TimerTextBox"
+                                        Grid.Row="1"
                                         UndoLimit="60"
                                         Background="{x:Null}"
                                         BorderBrush="{x:Null}"
@@ -319,7 +325,13 @@
                                         PreviewMouseDown="TimerTextBoxPreviewMouseDown"
                                         PreviewGotKeyboardFocus="TimerTextBoxPreviewGotKeyboardFocus"
                                         TextAlignment="Center"/>
-                <Grid>
+                <local:VisualTimerControl x:Name="VisualTimerDial"
+                                          Grid.Row="2"
+                                          Visibility="Collapsed"
+                                          HorizontalAlignment="Stretch"
+                                          VerticalAlignment="Stretch"
+                                          Margin="0 2"/>
+                <Grid Grid.Row="3">
                     <Label x:Name="TimeExpiredLabel"
                            Content="{Binding RelativeSource={RelativeSource AncestorType=local:TimerWindow}, Path=Timer.TimeExpiredAsString, Mode=OneWay}"
                            HorizontalAlignment="Center"
@@ -336,7 +348,7 @@
                         <Button x:Name="UpdateButton" Command="local:TimerWindow.UpdateCommand" MouseEnter="ButtonMouseEnter" MouseLeave="ButtonMouseLeave"/>
                     </StackPanel>
                 </Grid>
-            </StackPanel>
+            </Grid>
         </Grid>
         <Border x:Name="InnerNotificationBorder" BorderThickness="1" IsHitTestVisible="False" Margin="15" Opacity="0"/>
     </Grid>

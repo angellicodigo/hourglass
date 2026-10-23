@@ -18,7 +18,7 @@ using Timing;
 /// <summary>
 /// A pure circular analog visual timer dial (0-60 minutes) featuring 60 tick marks,
 /// 5-minute counter-clockwise numerals (0, 5, 10, ... 55), a colored disc wedge,
-/// interactive draggable knob with continuous second precision and live tooltip badge.
+/// and interactive draggable knob with continuous second precision.
 /// </summary>
 public sealed class VisualTimerControl : FrameworkElement
 {
@@ -26,12 +26,6 @@ public sealed class VisualTimerControl : FrameworkElement
         new FontFamily("Segoe UI"),
         FontStyles.Normal,
         FontWeights.SemiBold,
-        FontStretches.Normal);
-
-    private static readonly Typeface BadgeTypeface = new(
-        new FontFamily("Segoe UI"),
-        FontStyles.Normal,
-        FontWeights.Bold,
         FontStretches.Normal);
 
     private Theme? _theme;
@@ -55,6 +49,11 @@ public sealed class VisualTimerControl : FrameworkElement
     /// Occurs when the user releases the knob after dragging to set a timer duration.
     /// </summary>
     public event EventHandler<TimeSpan>? DurationCommitted;
+
+    /// <summary>
+    /// Occurs continuously while the user drags the knob to choose a timer duration.
+    /// </summary>
+    public event EventHandler<TimeSpan>? DraggedDurationChanged;
 
     /// <summary>
     /// Gets or sets the active theme.
@@ -102,7 +101,9 @@ public sealed class VisualTimerControl : FrameworkElement
                 if (_isLocked && _isDragging)
                 {
                     _isDragging = false;
+                    _draggedSeconds = 0;
                     ReleaseMouseCapture();
+                    DraggedDurationChanged?.Invoke(this, TimeSpan.Zero);
                 }
 
                 InvalidateVisual();
@@ -128,6 +129,7 @@ public sealed class VisualTimerControl : FrameworkElement
             _draggedSeconds = 0;
             ReleaseMouseCapture();
             InvalidateVisual();
+            DraggedDurationChanged?.Invoke(this, TimeSpan.Zero);
             e.Handled = true;
             return;
         }
@@ -150,8 +152,6 @@ public sealed class VisualTimerControl : FrameworkElement
         double outerRadius = Math.Max(10.0, (minDim / 2.0) - (8.0 * scale));
         double rNumerals = outerRadius - (12.0 * scale);
         double rTicksOuter = rNumerals - (12.0 * scale);
-        double rTicksMajorInner = rTicksOuter - (8.0 * scale);
-        double rDisc = Math.Max(5.0, rTicksMajorInner - (2.0 * scale));
 
         double dx = p.X - cx;
         double dy = p.Y - cy;
@@ -164,6 +164,7 @@ public sealed class VisualTimerControl : FrameworkElement
             CaptureMouse();
             _draggedSeconds = (int)Math.Round(MathExtensions.LimitToRange(TimeLeft.TotalSeconds, 0, 3600));
             UpdateDragFromPoint(p, cx, cy);
+            DraggedDurationChanged?.Invoke(this, TimeSpan.FromSeconds(_draggedSeconds));
             e.Handled = true;
             InvalidateVisual();
         }
@@ -261,6 +262,7 @@ public sealed class VisualTimerControl : FrameworkElement
             _draggedSeconds = 0;
             ReleaseMouseCapture();
             InvalidateVisual();
+            DraggedDurationChanged?.Invoke(this, TimeSpan.Zero);
             e.Handled = true;
         }
     }
@@ -284,6 +286,10 @@ public sealed class VisualTimerControl : FrameworkElement
             {
                 DurationCommitted?.Invoke(this, TimeSpan.FromSeconds(committed));
             }
+            else
+            {
+                DraggedDurationChanged?.Invoke(this, TimeSpan.Zero);
+            }
         }
     }
 
@@ -297,6 +303,7 @@ public sealed class VisualTimerControl : FrameworkElement
             _isDragging = false;
             _draggedSeconds = 0;
             InvalidateVisual();
+            DraggedDurationChanged?.Invoke(this, TimeSpan.Zero);
         }
     }
 
@@ -323,7 +330,6 @@ public sealed class VisualTimerControl : FrameworkElement
         double rTicksMajorInner = rTicksOuter - (8.0 * scale);
         double rTicksMinorInner = rTicksOuter - (4.0 * scale);
         double rDisc = Math.Max(5.0, rTicksMajorInner - (2.0 * scale));
-        double rHub = Math.Max(3.0, rDisc * 0.08);
         double rKnob = Math.Max(4.0, 7.5 * scale);
 
         // Theme brushes
@@ -341,7 +347,7 @@ public sealed class VisualTimerControl : FrameworkElement
         trackPen.Freeze();
         dc.DrawEllipse(trackBrush, trackPen, new Point(cx, cy), rDisc, rDisc);
 
-        // 2. Colored disc wedge
+        // 2. Colored disc wedge (no inner hub circle)
         double displaySeconds = _isDragging ? _draggedSeconds : MathExtensions.LimitToRange(TimeLeft.TotalSeconds, 0, 3600);
         if (displaySeconds >= 3600)
         {
@@ -372,12 +378,7 @@ public sealed class VisualTimerControl : FrameworkElement
             dc.DrawGeometry(discBrush, null, wedgeGeom);
         }
 
-        // 3. Center Hub
-        Pen hubPen = new(primaryTextBrush, Math.Max(1.0, 1.0 * scale));
-        hubPen.Freeze();
-        dc.DrawEllipse(trackBrush, hubPen, new Point(cx, cy), rHub, rHub);
-
-        // 4. 60 Tick Marks
+        // 3. 60 Tick Marks
         Pen majorTickPen = new(primaryTextBrush, Math.Max(1.0, 1.75 * scale));
         majorTickPen.Freeze();
 
@@ -408,7 +409,7 @@ public sealed class VisualTimerControl : FrameworkElement
             }
         }
 
-        // 5. 5-Minute Numerals (counter-clockwise: 0, 5, 10, ... 55)
+        // 4. 5-Minute Numerals (counter-clockwise: 0, 5, 10, ... 55)
         double pixelsPerDip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
         double numeralFontSize = Math.Max(7.0, 11.5 * scale);
 
@@ -434,7 +435,7 @@ public sealed class VisualTimerControl : FrameworkElement
             dc.DrawText(ft, new Point(tx - ft.Width / 2.0, ty - ft.Height / 2.0));
         }
 
-        // 6. Knob Handle at the perimeter of the colored disc
+        // 5. Knob Handle at the perimeter of the colored disc
         double knobAngleDeg = (displaySeconds / 3600.0) * 360.0;
         double knobAngleRad = knobAngleDeg * Math.PI / 180.0;
         double kx = cx - rDisc * Math.Sin(knobAngleRad);
@@ -444,49 +445,16 @@ public sealed class VisualTimerControl : FrameworkElement
         knobPen.Freeze();
         dc.DrawEllipse(bgBrush, knobPen, new Point(kx, ky), rKnob, rKnob);
         dc.DrawEllipse(knobAccentBrush, null, new Point(kx, ky), Math.Max(1.5, 2.2 * scale), Math.Max(1.5, 2.2 * scale));
-
-        // 7. Live Drag Tooltip Badge (mm:ss) near the knob
-        if (_isDragging)
-        {
-            int totalSec = MathExtensions.LimitToRange(_draggedSeconds, 0, 3600);
-            int minutes = totalSec / 60;
-            int seconds = totalSec % 60;
-            string badgeText = $"{minutes:D2}:{seconds:D2}";
-            double badgeFontSize = Math.Max(9.0, Math.Min(18.0, 11.0 * scale));
-
-            FormattedText bft = new(
-                badgeText,
-                CultureInfo.InvariantCulture,
-                FlowDirection.LeftToRight,
-                BadgeTypeface,
-                badgeFontSize,
-                bgBrush,
-                pixelsPerDip);
-
-            double badgeWidth = bft.Width + (14.0 * Math.Min(scale, 1.5));
-            double badgeHeight = bft.Height + (6.0 * Math.Min(scale, 1.5));
-
-            // Position radially inward from the knob
-            double badgeRadialDist = Math.Max(rHub + badgeHeight, rDisc - (28.0 * scale));
-            double bx = cx - badgeRadialDist * Math.Sin(knobAngleRad) - (badgeWidth / 2.0);
-            double by = cy - badgeRadialDist * Math.Cos(knobAngleRad) - (badgeHeight / 2.0);
-
-            // Clamp badge within bounds
-            bx = MathExtensions.LimitToRange(bx, 6.0, w - badgeWidth - 6.0);
-            by = MathExtensions.LimitToRange(by, 6.0, h - badgeHeight - 6.0);
-
-            Rect badgeRect = new(bx, by, badgeWidth, badgeHeight);
-            Pen badgeBorderPen = new(knobAccentBrush, 1.0);
-            badgeBorderPen.Freeze();
-
-            dc.DrawRoundedRectangle(primaryTextBrush, badgeBorderPen, badgeRect, 4.0, 4.0);
-            dc.DrawText(bft, new Point(bx + (badgeWidth - bft.Width) / 2.0, by + (badgeHeight - bft.Height) / 2.0));
-        }
     }
 
     private void UpdateDragFromPoint(Point p, double cx, double cy)
     {
+        int oldSec = _draggedSeconds;
         int candidateSeconds = MathExtensions.AngleToSeconds(p.X - cx, p.Y - cy);
         _draggedSeconds = MathExtensions.ComputeDraggedSeconds(_draggedSeconds, candidateSeconds);
+        if (_draggedSeconds != oldSec)
+        {
+            DraggedDurationChanged?.Invoke(this, TimeSpan.FromSeconds(_draggedSeconds));
+        }
     }
 }

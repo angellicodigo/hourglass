@@ -1,4 +1,4 @@
-﻿// --------------------------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="InterfaceScaler.cs" company="Chris Dziemborowicz">
 //   Copyright (c) Chris Dziemborowicz. All rights reserved.
 // </copyright>
@@ -107,7 +107,7 @@ public sealed class InterfaceScaler
     /// <summary>
     /// The <see cref="StackPanel"/> control that contains the controls of the <see cref="_timerWindow"/>.
     /// </summary>
-    private StackPanel _controlsPanel = null!;
+    private Grid _controlsPanel = null!;
 
     /// <summary>
     /// The larger <see cref="TextBox"/> on the <see cref="_timerWindow"/>.
